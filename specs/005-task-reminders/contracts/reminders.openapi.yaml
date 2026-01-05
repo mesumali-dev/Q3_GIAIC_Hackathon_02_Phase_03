@@ -1,0 +1,360 @@
+openapi: 3.1.0
+info:
+  title: Task Reminders API
+  version: 1.0.0
+  description: |
+    API endpoints for managing task reminders and notifications.
+    All endpoints require JWT authentication via Bearer token.
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+  - url: https://api.production.example.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/{user_id}/reminders:
+    post:
+      summary: Create a new reminder
+      description: |
+        Create a new reminder for a task. The reminder can be one-time or repeating.
+        Requires JWT authentication and user_id must match JWT claim.
+      operationId: createReminder
+      tags:
+        - Reminders
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReminderCreate'
+            examples:
+              one-time:
+                summary: One-time reminder
+                value:
+                  task_id: 42
+                  remind_at: "2026-01-03T14:30:00Z"
+              repeating:
+                summary: Repeating reminder
+                value:
+                  task_id: 43
+                  remind_at: "2026-01-03T09:00:00Z"
+                  repeat_interval_minutes: 15
+                  repeat_count: 3
+      responses:
+        '201':
+          description: Reminder created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReminderRead'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/{user_id}/reminders/due:
+    get:
+      summary: Get all due reminders
+      description: |
+        Fetch all reminders that are currently due for the authenticated user.
+        Due reminders are those where remind_at <= current_server_time and is_active = true.
+        This endpoint also processes reminders (increments triggered_count, calculates next repeat).
+      operationId: getDueReminders
+      tags:
+        - Reminders
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+      responses:
+        '200':
+          description: List of due reminders with task details
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReminderWithTask'
+              examples:
+                multiple-due:
+                  summary: Multiple due reminders
+                  value:
+                    - id: 1
+                      user_id: "user_abc123"
+                      task_id: 42
+                      task_title: "Submit report"
+                      task_description: "Q4 financial report"
+                      remind_at: "2026-01-03T14:30:00Z"
+                      repeat_interval_minutes: null
+                      repeat_count: null
+                      triggered_count: 1
+                      is_active: false
+                      created_at: "2026-01-02T10:00:00Z"
+                    - id: 2
+                      user_id: "user_abc123"
+                      task_id: 43
+                      task_title: "Team standup prep"
+                      task_description: null
+                      remind_at: "2026-01-03T09:15:00Z"
+                      repeat_interval_minutes: 15
+                      repeat_count: 3
+                      triggered_count: 2
+                      is_active: true
+                      created_at: "2026-01-03T09:00:00Z"
+                no-due:
+                  summary: No due reminders
+                  value: []
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/{user_id}/reminders/{reminder_id}:
+    delete:
+      summary: Delete a reminder
+      description: |
+        Permanently delete a reminder. This action cannot be undone.
+        User must own the reminder (user_id matches JWT claim and reminder.user_id).
+      operationId: deleteReminder
+      tags:
+        - Reminders
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+        - name: reminder_id
+          in: path
+          required: true
+          description: ID of the reminder to delete
+          schema:
+            type: integer
+            example: 42
+      responses:
+        '200':
+          description: Reminder deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Reminder deleted"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Reminder not found or user does not own it
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from Better Auth authentication
+
+  parameters:
+    UserIdPath:
+      name: user_id
+      in: path
+      required: true
+      description: |
+        User ID from JWT token. Must match the authenticated user's ID.
+      schema:
+        type: string
+        example: "user_abc123"
+
+  schemas:
+    ReminderCreate:
+      type: object
+      required:
+        - task_id
+        - remind_at
+      properties:
+        task_id:
+          type: integer
+          description: ID of the task to set a reminder for
+          example: 42
+        remind_at:
+          type: string
+          format: date-time
+          description: When to trigger the reminder (ISO 8601 format, UTC)
+          example: "2026-01-03T14:30:00Z"
+        repeat_interval_minutes:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 1440
+          description: Minutes between repeats (1-1440, null for one-time reminder)
+          example: 15
+        repeat_count:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 100
+          description: Total number of times to repeat (1-100, null for one-time reminder)
+          example: 3
+
+    ReminderRead:
+      type: object
+      required:
+        - id
+        - user_id
+        - task_id
+        - remind_at
+        - triggered_count
+        - is_active
+        - created_at
+      properties:
+        id:
+          type: integer
+          description: Unique reminder identifier
+          example: 1
+        user_id:
+          type: string
+          description: Owner of the reminder
+          example: "user_abc123"
+        task_id:
+          type: integer
+          description: Associated task ID
+          example: 42
+        remind_at:
+          type: string
+          format: date-time
+          description: When the reminder triggers (UTC)
+          example: "2026-01-03T14:30:00Z"
+        repeat_interval_minutes:
+          type: integer
+          nullable: true
+          description: Minutes between repeats (null = one-time)
+          example: 15
+        repeat_count:
+          type: integer
+          nullable: true
+          description: Total times to repeat (null = one-time)
+          example: 3
+        triggered_count:
+          type: integer
+          description: How many times reminder has triggered
+          example: 1
+        is_active:
+          type: boolean
+          description: Whether reminder is active
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          description: When reminder was created (UTC)
+          example: "2026-01-02T10:00:00Z"
+
+    ReminderWithTask:
+      allOf:
+        - $ref: '#/components/schemas/ReminderRead'
+        - type: object
+          required:
+            - task_title
+          properties:
+            task_title:
+              type: string
+              description: Title of the associated task
+              example: "Submit Q4 report"
+            task_description:
+              type: string
+              nullable: true
+              description: Description of the task
+              example: "Complete and submit the Q4 financial report by EOD"
+
+    Error:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Human-readable error message
+          example: "Reminder not found"
+
+    ValidationError:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: array
+          items:
+            type: object
+            properties:
+              loc:
+                type: array
+                items:
+                  oneOf:
+                    - type: string
+                    - type: integer
+                description: Location of the error in the request
+              msg:
+                type: string
+                description: Error message
+              type:
+                type: string
+                description: Error type
+          example:
+            - loc: ["body", "remind_at"]
+              msg: "Invalid datetime format"
+              type: "value_error.datetime"
+
+  responses:
+    BadRequest:
+      description: Invalid request data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            detail: "Invalid request data"
+
+    Unauthorized:
+      description: Missing or invalid JWT token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            detail: "Not authenticated"
+
+    Forbidden:
+      description: Valid JWT but user_id mismatch
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            detail: "Forbidden: user_id does not match authenticated user"
+
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+
+tags:
+  - name: Reminders
+    description: Task reminder and notification operations

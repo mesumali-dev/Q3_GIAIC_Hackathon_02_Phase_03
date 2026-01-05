@@ -1,0 +1,282 @@
+openapi: 3.0.3
+info:
+  title: Authentication API
+  description: |
+    Backend authentication API for the Todo application.
+    Handles user registration, login, and JWT token verification.
+  version: 1.0.0
+  contact:
+    name: Backend Auth Refactor
+
+servers:
+  - url: http://localhost:8000
+    description: Development server
+
+tags:
+  - name: Authentication
+    description: User authentication endpoints
+
+paths:
+  /api/auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: |
+        Creates a new user account with the provided email and password.
+        Returns a JWT access token on success.
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              email: "user@example.com"
+              password: "securepassword123"
+      responses:
+        '200':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              example:
+                access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                token_type: "bearer"
+                user:
+                  id: "550e8400-e29b-41d4-a716-446655440000"
+                  email: "user@example.com"
+        '400':
+          description: Validation error (invalid email format or password too short)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              example:
+                detail:
+                  - loc: ["body", "password"]
+                    msg: "ensure this value has at least 8 characters"
+                    type: "value_error.any_str.min_length"
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Email already registered"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Internal server error"
+
+  /api/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login user
+      description: |
+        Authenticates a user with email and password.
+        Returns a JWT access token on success.
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: "user@example.com"
+              password: "securepassword123"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              example:
+                access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                token_type: "bearer"
+                user:
+                  id: "550e8400-e29b-41d4-a716-446655440000"
+                  email: "user@example.com"
+        '401':
+          description: Invalid credentials (wrong password or non-existent email)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Invalid credentials"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/verify:
+    get:
+      tags:
+        - Authentication
+      summary: Verify JWT token
+      description: |
+        Verifies the JWT token in the Authorization header.
+        Returns user information if the token is valid.
+      operationId: verifyToken
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Token is valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyResponse'
+              example:
+                authenticated: true
+                user_id: "550e8400-e29b-41d4-a716-446655440000"
+                email: "user@example.com"
+        '401':
+          description: Token invalid, expired, or missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missing:
+                  summary: Missing Authorization header
+                  value:
+                    detail: "Missing Authorization header"
+                expired:
+                  summary: Token has expired
+                  value:
+                    detail: "Token has expired"
+                invalid:
+                  summary: Invalid token
+                  value:
+                    detail: "Invalid token: Signature verification failed"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from /api/auth/login or /api/auth/register
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          description: Valid email address
+          example: "user@example.com"
+        password:
+          type: string
+          minLength: 8
+          description: Password (minimum 8 characters)
+          example: "securepassword123"
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: Registered email address
+          example: "user@example.com"
+        password:
+          type: string
+          description: User password
+          example: "securepassword123"
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: User UUID
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        email:
+          type: string
+          format: email
+          description: User email address
+          example: "user@example.com"
+
+    AuthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT access token
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        token_type:
+          type: string
+          default: bearer
+          description: Token type (always 'bearer')
+          example: "bearer"
+        user:
+          $ref: '#/components/schemas/UserResponse'
+
+    VerifyResponse:
+      type: object
+      properties:
+        authenticated:
+          type: boolean
+          description: Whether the token is valid
+          example: true
+        user_id:
+          type: string
+          format: uuid
+          description: User UUID from token
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        email:
+          type: string
+          format: email
+          description: User email from token
+          example: "user@example.com"
+
+    ErrorResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+          description: Error message
+          example: "Invalid credentials"
+
+    ValidationError:
+      type: object
+      properties:
+        detail:
+          type: array
+          items:
+            type: object
+            properties:
+              loc:
+                type: array
+                items:
+                  oneOf:
+                    - type: string
+                    - type: integer
+              msg:
+                type: string
+              type:
+                type: string

@@ -1,0 +1,669 @@
+openapi: 3.1.0
+info:
+  title: AI-Native Todo API - Phase 1
+  description: |
+    RESTful API for AI-Native Todo Application Phase 1.
+
+    This API provides endpoints for:
+    - Task management (existing, documented for completeness)
+    - Conversation management (new)
+    - Message management (new)
+
+    All endpoints require JWT authentication via Bearer token.
+    All resources are scoped to the authenticated user.
+  version: 1.0.0
+  contact:
+    name: API Support
+
+servers:
+  - url: http://localhost:8000
+    description: Development server
+  - url: https://api.example.com
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Tasks
+    description: Task CRUD operations (existing)
+  - name: Conversations
+    description: Conversation management (new)
+  - name: Messages
+    description: Message operations within conversations (new)
+  - name: Health
+    description: Health check endpoints
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Returns service health status. No authentication required.
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  # ============ TASK ENDPOINTS (Existing) ============
+
+  /api/{user_id}/tasks:
+    get:
+      tags:
+        - Tasks
+      summary: List all tasks
+      description: |
+        Returns all tasks for the authenticated user, ordered by creation date (newest first).
+
+        Implements: FR-002
+      operationId: listTasks
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Tasks
+      summary: Create a new task
+      description: |
+        Creates a new task for the authenticated user.
+
+        Implements: FR-001
+      operationId: createTask
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreate'
+      responses:
+        '201':
+          description: Task created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/{user_id}/tasks/{task_id}:
+    get:
+      tags:
+        - Tasks
+      summary: Get a task by ID
+      description: |
+        Returns a single task by ID if owned by the authenticated user.
+
+        Implements: FR-003
+      operationId: getTask
+      parameters:
+        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/taskId'
+      responses:
+        '200':
+          description: Task details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Tasks
+      summary: Update a task
+      description: |
+        Updates a task's title and/or description.
+
+        Implements: FR-004, FR-007
+      operationId: updateTask
+      parameters:
+        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/taskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdate'
+      responses:
+        '200':
+          description: Task updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    delete:
+      tags:
+        - Tasks
+      summary: Delete a task
+      description: |
+        Permanently deletes a task.
+
+        Implements: FR-005
+      operationId: deleteTask
+      parameters:
+        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/taskId'
+      responses:
+        '204':
+          description: Task deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/{user_id}/tasks/{task_id}/complete:
+    patch:
+      tags:
+        - Tasks
+      summary: Toggle task completion
+      description: |
+        Toggles the completion status of a task.
+
+        Implements: FR-004
+      operationId: toggleTaskComplete
+      parameters:
+        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/taskId'
+      responses:
+        '200':
+          description: Task completion toggled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============ CONVERSATION ENDPOINTS (New) ============
+
+  /api/{user_id}/conversations:
+    get:
+      tags:
+        - Conversations
+      summary: List all conversations
+      description: |
+        Returns all conversations for the authenticated user, ordered by last update (newest first).
+        Does not include message content, only metadata.
+
+        Implements: FR-009
+      operationId: listConversations
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        '200':
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Conversations
+      summary: Create a new conversation
+      description: |
+        Creates a new conversation for the authenticated user.
+
+        Implements: FR-008
+      operationId: createConversation
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConversationCreate'
+      responses:
+        '201':
+          description: Conversation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/{user_id}/conversations/{conversation_id}:
+    get:
+      tags:
+        - Conversations
+      summary: Get a conversation with messages
+      description: |
+        Returns a single conversation with all its messages in chronological order.
+
+        Implements: FR-010, FR-015
+      operationId: getConversation
+      parameters:
+        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/conversationId'
+      responses:
+        '200':
+          description: Conversation with messages
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationWithMessagesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Conversations
+      summary: Delete a conversation
+      description: |
+        Permanently deletes a conversation and all its messages (cascade delete).
+
+        Implements: FR-011
+      operationId: deleteConversation
+      parameters:
+        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/conversationId'
+      responses:
+        '204':
+          description: Conversation deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============ MESSAGE ENDPOINTS (New) ============
+
+  /api/{user_id}/conversations/{conversation_id}/messages:
+    post:
+      tags:
+        - Messages
+      summary: Add a message to conversation
+      description: |
+        Adds a new message to an existing conversation.
+        Updates the conversation's updated_at timestamp.
+
+        Implements: FR-012, FR-013, FR-014
+      operationId: addMessage
+      parameters:
+        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/conversationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageCreate'
+      responses:
+        '201':
+          description: Message added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from Better Auth
+
+  parameters:
+    userId:
+      name: user_id
+      in: path
+      required: true
+      description: User ID (must match authenticated user)
+      schema:
+        type: string
+        format: uuid
+
+    taskId:
+      name: task_id
+      in: path
+      required: true
+      description: Task ID
+      schema:
+        type: string
+        format: uuid
+
+    conversationId:
+      name: conversation_id
+      in: path
+      required: true
+      description: Conversation ID
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid JWT token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            detail: "Not authenticated"
+
+    Forbidden:
+      description: Valid JWT but user lacks permission
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            detail: "Not authorized to access this resource"
+
+    NotFound:
+      description: Resource not found or not owned by user
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            detail: "Resource not found"
+
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+
+  schemas:
+    # ============ Health ============
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "healthy"
+        version:
+          type: string
+          example: "1.0.0"
+      required:
+        - status
+
+    # ============ Error Schemas ============
+
+    ErrorResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+        - detail
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        detail:
+          type: array
+          items:
+            type: object
+            properties:
+              loc:
+                type: array
+                items:
+                  type: string
+              msg:
+                type: string
+              type:
+                type: string
+
+    # ============ Task Schemas ============
+
+    TaskCreate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Task title (required)
+        description:
+          type: string
+          maxLength: 1000
+          nullable: true
+          description: Task description (optional)
+      required:
+        - title
+
+    TaskUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          nullable: true
+        description:
+          type: string
+          maxLength: 1000
+          nullable: true
+
+    TaskResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        is_completed:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - user_id
+        - title
+        - is_completed
+        - created_at
+        - updated_at
+
+    TaskListResponse:
+      type: object
+      properties:
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskResponse'
+        count:
+          type: integer
+      required:
+        - tasks
+        - count
+
+    # ============ Conversation Schemas ============
+
+    ConversationCreate:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+          nullable: true
+          description: Optional conversation title
+
+    ConversationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - user_id
+        - created_at
+        - updated_at
+
+    ConversationListResponse:
+      type: object
+      properties:
+        conversations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConversationResponse'
+        count:
+          type: integer
+      required:
+        - conversations
+        - count
+
+    ConversationWithMessagesResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/MessageResponse'
+      required:
+        - id
+        - user_id
+        - created_at
+        - updated_at
+        - messages
+
+    # ============ Message Schemas ============
+
+    MessageCreate:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [user, assistant, system]
+          description: Message sender role
+        content:
+          type: string
+          minLength: 1
+          maxLength: 50000
+          description: Message text content
+      required:
+        - role
+        - content
+
+    MessageResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        conversation_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [user, assistant, system]
+        content:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - conversation_id
+        - role
+        - content
+        - created_at

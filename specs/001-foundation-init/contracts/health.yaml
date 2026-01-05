@@ -1,0 +1,63 @@
+openapi: 3.1.0
+info:
+  title: Todo App Health API
+  description: Health check endpoint for the Todo application backend
+  version: 0.1.0
+  contact:
+    name: AI-Native Todo App
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+
+paths:
+  /health:
+    get:
+      operationId: healthCheck
+      summary: Health Check
+      description: |
+        Returns the health status of the backend service.
+        This endpoint is unauthenticated and used for monitoring.
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "healthy"
+                timestamp: "2025-12-30T12:00:00Z"
+        '503':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "unhealthy"
+                timestamp: "2025-12-30T12:00:00Z"
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum:
+            - healthy
+            - unhealthy
+          description: Current health status of the service
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the health check
+
+tags:
+  - name: Health
+    description: Health and monitoring endpoints

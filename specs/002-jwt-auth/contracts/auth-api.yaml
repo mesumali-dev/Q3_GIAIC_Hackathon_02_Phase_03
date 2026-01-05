@@ -1,0 +1,322 @@
+openapi: 3.0.3
+info:
+  title: Todo App Authentication API
+  description: |
+    Authentication endpoints for the Todo Full-Stack Application.
+    This specification covers Better Auth endpoints (frontend) and
+    a protected test endpoint (backend) for JWT verification.
+  version: 1.0.0
+  contact:
+    name: Hackathon Team
+
+servers:
+  - url: http://localhost:3000
+    description: Frontend (Better Auth endpoints)
+  - url: http://localhost:8000
+    description: Backend (FastAPI protected endpoints)
+
+tags:
+  - name: Better Auth (Frontend)
+    description: Authentication endpoints managed by Better Auth
+  - name: Protected (Backend)
+    description: JWT-protected backend endpoints
+
+paths:
+  # ==========================================================================
+  # Better Auth Endpoints (Frontend - managed by Better Auth library)
+  # ==========================================================================
+
+  /api/auth/sign-up/email:
+    post:
+      tags:
+        - Better Auth (Frontend)
+      summary: Register a new user
+      description: |
+        Creates a new user account with email and password.
+        On success, automatically creates a session and returns JWT.
+      operationId: signUpEmail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignUpRequest'
+      responses:
+        '200':
+          description: Registration successful
+          headers:
+            set-auth-token:
+              description: JWT token for authenticated requests
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Invalid request (validation error)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/sign-in/email:
+    post:
+      tags:
+        - Better Auth (Frontend)
+      summary: Sign in with email and password
+      description: |
+        Authenticates user with email and password.
+        On success, creates a session and returns JWT.
+      operationId: signInEmail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignInRequest'
+      responses:
+        '200':
+          description: Login successful
+          headers:
+            set-auth-token:
+              description: JWT token for authenticated requests
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/sign-out:
+    post:
+      tags:
+        - Better Auth (Frontend)
+      summary: Sign out current user
+      description: Invalidates the current session.
+      operationId: signOut
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/session:
+    get:
+      tags:
+        - Better Auth (Frontend)
+      summary: Get current session
+      description: Returns current user session information.
+      operationId: getSession
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Session information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==========================================================================
+  # Backend Protected Endpoints (FastAPI - JWT verification)
+  # ==========================================================================
+
+  /api/auth/verify:
+    get:
+      tags:
+        - Protected (Backend)
+      summary: Verify JWT token
+      description: |
+        Test endpoint to verify JWT authentication is working.
+        Returns user information extracted from JWT token.
+
+        **Constitution Compliance:**
+        - Requires valid JWT in Authorization header
+        - Returns 401 for missing/invalid/expired tokens
+      operationId: verifyAuth
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Token is valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenVerifyResponse'
+        '401':
+          description: Invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtained from Better Auth sign-in/sign-up.
+        Include in Authorization header as: Bearer <token>
+
+  schemas:
+    SignUpRequest:
+      type: object
+      required:
+        - email
+        - password
+        - name
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+          description: User's email address
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: securepassword123
+          description: Password (minimum 8 characters)
+        name:
+          type: string
+          maxLength: 255
+          example: John Doe
+          description: User's display name
+
+    SignInRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          example: securepassword123
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        session:
+          $ref: '#/components/schemas/Session'
+        token:
+          type: string
+          description: JWT access token
+
+    SessionResponse:
+      type: object
+      properties:
+        session:
+          $ref: '#/components/schemas/Session'
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        name:
+          type: string
+          example: John Doe
+        emailVerified:
+          type: boolean
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+
+    TokenVerifyResponse:
+      type: object
+      properties:
+        authenticated:
+          type: boolean
+          example: true
+        user_id:
+          type: string
+          format: uuid
+          description: User ID extracted from JWT sub claim
+        email:
+          type: string
+          format: email
+          description: User email from JWT claims
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error type
+          example: UNAUTHORIZED
+        message:
+          type: string
+          description: Human-readable error message
+          example: Invalid or expired token
+        code:
+          type: string
+          description: Error code for client handling
+          example: AUTH_INVALID_TOKEN
+
+security:
+  - bearerAuth: []
