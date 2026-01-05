@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DeleteTask Tool",
+  "description": "Permanently delete a task",
+  "type": "object",
+  "properties": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "user_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Authenticated user UUID"
+        },
+        "task_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Task UUID to delete"
+        }
+      },
+      "required": ["user_id", "task_id"]
+    },
+    "output": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "const": true
+            },
+            "task_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": ["success", "task_id", "message"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "const": false
+            },
+            "error": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "enum": ["VALIDATION_ERROR", "TASK_NOT_FOUND", "AUTHORIZATION_ERROR", "DATABASE_ERROR"]
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": ["code", "message"]
+            }
+          },
+          "required": ["success", "error"]
+        }
+      ]
+    }
+  },
+  "examples": [
+    {
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "task_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+      },
+      "output": {
+        "success": true,
+        "task_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "message": "Task deleted successfully"
+      }
+    }
+  ]
+}
