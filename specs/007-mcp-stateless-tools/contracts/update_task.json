@@ -1,0 +1,121 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UpdateTask Tool",
+  "description": "Update task title and/or description",
+  "type": "object",
+  "properties": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "user_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Authenticated user UUID"
+        },
+        "task_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Task UUID to update"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "New task title (optional, 1-200 characters)"
+        },
+        "description": {
+          "type": ["string", "null"],
+          "maxLength": 1000,
+          "description": "New description (optional, max 1000 characters)"
+        }
+      },
+      "required": ["user_id", "task_id"],
+      "anyOf": [
+        {"required": ["title"]},
+        {"required": ["description"]}
+      ]
+    },
+    "output": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "const": true
+            },
+            "task_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "user_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "title": {
+              "type": "string"
+            },
+            "description": {
+              "type": ["string", "null"]
+            },
+            "is_completed": {
+              "type": "boolean"
+            },
+            "created_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updated_at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": ["success", "task_id", "user_id", "title", "is_completed", "created_at", "updated_at"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "const": false
+            },
+            "error": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "enum": ["VALIDATION_ERROR", "TASK_NOT_FOUND", "AUTHORIZATION_ERROR", "DATABASE_ERROR"]
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": ["code", "message"]
+            }
+          },
+          "required": ["success", "error"]
+        }
+      ]
+    }
+  },
+  "examples": [
+    {
+      "input": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "task_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "title": "Buy groceries and supplies",
+        "description": "Milk, eggs, bread, paper towels"
+      },
+      "output": {
+        "success": true,
+        "task_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "title": "Buy groceries and supplies",
+        "description": "Milk, eggs, bread, paper towels",
+        "is_completed": false,
+        "created_at": "2026-01-05T14:30:00.123456Z",
+        "updated_at": "2026-01-05T16:00:00.456789Z"
+      }
+    }
+  ]
+}
