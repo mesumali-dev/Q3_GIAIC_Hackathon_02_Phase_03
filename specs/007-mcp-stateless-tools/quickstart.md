@@ -111,6 +111,9 @@ uv run python
 # Import tool functions
 from src.mcp.tools.add_task import add_task
 from src.mcp.tools.list_tasks import list_tasks
+from src.mcp.tools.complete_task import complete_task
+from src.mcp.tools.delete_task import delete_task
+from src.mcp.tools.update_task import update_task
 
 # Test add_task
 result = add_task(
@@ -123,6 +126,29 @@ print(result)
 # Test list_tasks
 tasks = list_tasks(user_id="550e8400-e29b-41d4-a716-446655440000")
 print(tasks)
+
+# Test complete_task
+completed = complete_task(
+    user_id="550e8400-e29b-41d4-a716-446655440000",
+    task_id="7c9e6679-7425-40de-944b-e07fc1f90ae7"
+)
+print(completed)
+
+# Test update_task
+updated = update_task(
+    user_id="550e8400-e29b-41d4-a716-446655440000",
+    task_id="7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    title="Updated task title",
+    description="Updated description"
+)
+print(updated)
+
+# Test delete_task
+deleted = delete_task(
+    user_id="550e8400-e29b-41d4-a716-446655440000",
+    task_id="7c9e6679-7425-40de-944b-e07fc1f90ae7"
+)
+print(deleted)
 ```
 
 ## Tool Usage Examples
