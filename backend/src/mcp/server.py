@@ -89,12 +89,15 @@ async def main() -> None:
     # Phase 7: update_task tool (T088)
     from src.mcp.tools.update_task import update_task  # noqa: F401
 
+    # Phase 8: schedule_reminder tool (reminders)
+    from src.mcp.tools.schedule_reminder import schedule_reminder  # noqa: F401
+
     # Log server startup
     logger.info(
         "mcp_server_startup",
         server_name=MCP_SERVER_NAME,
         server_version=MCP_SERVER_VERSION,
-        tools=["add_task", "list_tasks", "complete_task", "delete_task", "update_task"],
+        tools=["add_task", "list_tasks", "complete_task", "delete_task", "update_task", "schedule_reminder"],
     )
 
     try:

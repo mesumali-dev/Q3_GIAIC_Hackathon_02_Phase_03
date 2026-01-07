@@ -209,3 +209,85 @@ class ErrorResponse(BaseModel):
             ErrorResponse instance
         """
         return cls(error={"code": code, "message": message})
+
+
+# ============================================================================
+# Reminder Schemas
+# ============================================================================
+
+
+class ScheduleReminderInput(BaseModel):
+    """Input schema for schedule_reminder tool."""
+
+    user_id: str = Field(..., description="Authenticated user UUID")
+    task_id: str = Field(..., description="Task UUID to set reminder for")
+    remind_at: str = Field(..., description="When to trigger reminder (ISO 8601 datetime string)")
+    repeat_interval_minutes: Optional[int] = Field(
+        None,
+        gt=0,
+        le=1440,
+        description="Minutes between repeats (optional, max 1440 = 24 hours)"
+    )
+    repeat_count: Optional[int] = Field(
+        None,
+        gt=0,
+        le=100,
+        description="Total times to repeat (optional, max 100)"
+    )
+
+    @field_validator("user_id", "task_id")
+    @classmethod
+    def validate_uuid_fields(cls, v: str) -> str:
+        """Ensure UUID fields are valid UUID strings."""
+        try:
+            UUID(v)
+        except ValueError:
+            raise ValueError("Must be a valid UUID string")
+        return v
+
+    @field_validator("remind_at")
+    @classmethod
+    def validate_remind_at(cls, v: str) -> str:
+        """Ensure remind_at is a valid ISO 8601 datetime string."""
+        try:
+            datetime.fromisoformat(v.replace("Z", "+00:00"))
+        except ValueError:
+            raise ValueError("remind_at must be a valid ISO 8601 datetime string")
+        return v
+
+
+class ReminderOutput(BaseModel):
+    """Output schema for reminder data (used by schedule_reminder)."""
+
+    success: bool = True
+    reminder_id: int
+    user_id: str
+    task_id: str
+    remind_at: str  # ISO 8601 format
+    repeat_interval_minutes: Optional[int]
+    repeat_count: Optional[int]
+    triggered_count: int
+    is_active: bool
+    created_at: str  # ISO 8601 format
+
+    @classmethod
+    def from_reminder(cls, reminder) -> "ReminderOutput":
+        """Convert Reminder model to ReminderOutput schema.
+
+        Args:
+            reminder: Reminder SQLModel instance
+
+        Returns:
+            ReminderOutput instance with converted data
+        """
+        return cls(
+            reminder_id=reminder.id,
+            user_id=str(reminder.user_id),
+            task_id=str(reminder.task_id),
+            remind_at=reminder.remind_at.isoformat() + "Z" if isinstance(reminder.remind_at, datetime) else reminder.remind_at,
+            repeat_interval_minutes=reminder.repeat_interval_minutes,
+            repeat_count=reminder.repeat_count,
+            triggered_count=reminder.triggered_count,
+            is_active=reminder.is_active,
+            created_at=reminder.created_at.isoformat() + "Z" if isinstance(reminder.created_at, datetime) else reminder.created_at,
+        )
