@@ -1,6 +1,6 @@
 ---
 name: openai-agents-python
-description: Fetch up-to-date OpenAI Agents Python SDK documentation using Context7. Use this skill when users ask about openai agents, openai agents sdk, openai agents python, building multi-agent workflows, agent handoffs, guardrails, sessions, or tracing with the OpenAI Agents framework. Triggers on keywords like "openai agents", "openai agents python", "openai agents sdk" "agents sdk", "multi-agent", "handoffs", "guardrails" in the context of OpenAI/Python development.
+description: Fetch up-to-date OpenAI Agents Python SDK documentation using Context7. Use this skill when users ask about openai agents, openai agents sdk, openai agents python, building multi-agent workflows, agent handoffs, guardrails, sessions, or tracing with the OpenAI Agents framework. Triggers on keywords like "openai agents", "openai agents python", "openai agents sdk python", "openai agents sdk" "agents sdk", "multi-agent", "handoffs", "guardrails" in the context of OpenAI/Python development.
 ---
 
 # OpenAI Agents Python
