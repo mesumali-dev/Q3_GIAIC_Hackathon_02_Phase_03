@@ -16,7 +16,13 @@ Exports:
 from src.agent.context import UserContext
 from src.agent.prompts import TASK_MANAGER_PROMPT, TASK_MANAGER_FULL_PROMPT
 from src.agent.agent import task_agent
-from src.agent.runner import run_agent, run_agent_async
+from src.agent.runner import (
+    run_agent,
+    run_agent_async,
+    run_agent_with_history,
+    messages_to_input_list,
+    extract_tool_calls,
+)
 
 __all__ = [
     "UserContext",
@@ -25,4 +31,7 @@ __all__ = [
     "task_agent",
     "run_agent",
     "run_agent_async",
+    "run_agent_with_history",
+    "messages_to_input_list",
+    "extract_tool_calls",
 ]
