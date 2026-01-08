@@ -27,6 +27,11 @@ from src.services.task_service import (
     toggle_complete,
     update_task,
 )
+from src.services.chat_service import (
+    get_or_create_conversation,
+    process_chat_message,
+    verify_conversation_ownership,
+)
 
 __all__ = [
     "hash_password",
@@ -46,4 +51,7 @@ __all__ = [
     "delete_conversation",
     "add_message",
     "get_messages",
+    "get_or_create_conversation",
+    "process_chat_message",
+    "verify_conversation_ownership",
 ]
