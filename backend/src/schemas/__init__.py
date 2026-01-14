@@ -31,6 +31,11 @@ from src.schemas.task import (
     TaskResponse,
     TaskUpdate,
 )
+from src.schemas.chat import (
+    ChatRequest,
+    ChatResponse,
+    ToolCall,
+)
 
 __all__ = [
     "RegisterRequest",
@@ -52,4 +57,7 @@ __all__ = [
     "ConversationWithMessagesResponse",
     "MessageCreate",
     "MessageResponse",
+    "ChatRequest",
+    "ChatResponse",
+    "ToolCall",
 ]

@@ -222,6 +222,10 @@ See `.specify/memory/constitution.md` for code quality, testing, performance, se
 - Neon Serverless PostgreSQL via SQLModel (existing connection) (006-ai-todo-core-foundation)
 - Python 3.11+ + Official MCP SDK (Python), FastAPI (existing), SQLModel (existing), PyJWT (existing) (007-mcp-stateless-tools)
 - Neon Serverless PostgreSQL via SQLModel ORM (existing connection) (007-mcp-stateless-tools)
+- Python 3.11+ (existing backend) + OpenAI Agents SDK (`openai-agents`), existing MCP tools, FastAPI (existing) (008-ai-agent-mcp-orchestration)
+- Neon PostgreSQL via SQLModel ORM (no new schema - uses existing Task entity) (008-ai-agent-mcp-orchestration)
+- Python 3.11+ (existing backend) + OpenAI Agents SDK (existing), FastAPI (existing), SQLModel (existing), Pydantic (existing) (009-stateless-chat-api)
+- Neon PostgreSQL via SQLModel ORM (existing Conversation/Message entities) (009-stateless-chat-api)
 
 ## Recent Changes
 - 001-foundation-init: Added Python 3.11+ (backend), TypeScript 5.x (frontend) + FastAPI, SQLModel, uvicorn (backend); Next.js 16+, Better Auth (frontend)

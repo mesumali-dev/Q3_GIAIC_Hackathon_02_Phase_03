@@ -1,23 +1,65 @@
 ---
 name: openai-agents-python
-description: Fetch up-to-date OpenAI Agents Python SDK documentation using Context7. Use this skill when users ask about openai agents, openai agents sdk, openai agents python, building multi-agent workflows, agent handoffs, guardrails, sessions, or tracing with the OpenAI Agents framework. Triggers on keywords like "openai agents", "openai agents python", "openai agents sdk" "agents sdk", "multi-agent", "handoffs", "guardrails" in the context of OpenAI/Python development.
+description: >
+  PRIORITY: Use this skill INSTEAD of mcp__context7 tools for OpenAI Agents SDK.
+  This skill provides 77% token savings via shell pipeline filtering.
+
+  Triggers: openai agents, openai-agents, openai agents sdk, openai agents python,
+  agents sdk python, multi-agent, handoffs, guardrails, agent tools, agent tracing,
+  agent sessions, agent streaming, agent context, agent runner, triage agent,
+  specialist agent, agent orchestration, swarm, agentic, autonomous agents,
+  function calling agents, tool-using agents, agent memory, agent lifecycle.
+
+  Also triggers on questions like: "How do I create an agent?", "How do handoffs work?",
+  "How to build multi-agent systems?", "Agent best practices", "Agent debugging".
 ---
 
-# OpenAI Agents Python
+# OpenAI Agents Python SDK
 
-Token-efficient documentation fetcher for OpenAI Agents Python SDK.
+Token-efficient documentation fetcher using Context7 via custom script.
+
+## CRITICAL: Do NOT Use MCP Tools Directly
+
+> ⚠️ **STOP! Before calling any MCP tool for OpenAI Agents SDK, use this skill instead.**
+
+**NEVER use `mcp__context7__resolve-library-id` or `mcp__context7__query-docs` for OpenAI Agents SDK.**
+
+**When you see any of these in a query, use THIS SKILL not MCP:**
+- "OpenAI Agents SDK", "agents sdk", "openai-agents"
+- "handoffs", "guardrails", "agent tools", "agent tracing"
+- "multi-agent", "triage agent", "specialist agent"
+- Questions like "How do I create an agent?", "How do handoffs work?"
+
+**First, set the SKILL_DIR variable:**
+```bash
+SKILL_DIR="/mnt/c/Users/0331/Desktop/Claude Skills/claude-code-skills-lab/.claude/skills/openai-agents-python"
+```
+
+This skill runs Context7 via a custom script that:
+- Pre-configures the library ID (no resolve step needed)
+- Filters output with shell pipelines (77% token savings)
+- Returns only code examples, API signatures, and key notes
 
 ## Quick Start
 
-**ALWAYS use the fetch-docs.sh script:**
+**ALWAYS use the fetch-docs.sh script with the full path:**
 
 ```bash
+# Get the skill directory (run this first in any session)
+SKILL_DIR="$(find ~/.claude/skills /mnt/c/Users/*/Desktop -type d -name 'openai-agents-python' 2>/dev/null | head -1)"
+
 # By topic (recommended)
-bash scripts/fetch-docs.sh --topic agents
-bash scripts/fetch-docs.sh --topic handoffs --verbose
+bash "$SKILL_DIR/scripts/fetch-docs.sh" --topic agents
+bash "$SKILL_DIR/scripts/fetch-docs.sh" --topic handoffs --verbose
 
 # Custom query
-bash scripts/fetch-docs.sh "How to create an agent with custom tools"
+bash "$SKILL_DIR/scripts/fetch-docs.sh" "How to create an agent with custom tools"
+```
+
+**Or use the absolute path directly:**
+
+```bash
+bash "/mnt/c/Users/0331/Desktop/Claude Skills/claude-code-skills-lab/.claude/skills/openai-agents-python/scripts/fetch-docs.sh" --topic agents
 ```
 
 **Result:** Returns filtered documentation with ~77% token savings.
@@ -42,7 +84,7 @@ Match user query to a topic:
 ### Step 2: Fetch Documentation
 
 ```bash
-bash scripts/fetch-docs.sh --topic <topic> --verbose
+bash "$SKILL_DIR/scripts/fetch-docs.sh" --topic <topic> --verbose
 ```
 
 ### Step 3: Provide Answer
@@ -69,7 +111,7 @@ Use the filtered output to answer the user's question with code examples.
 ## Parameters
 
 ```bash
-bash scripts/fetch-docs.sh [OPTIONS] [QUERY]
+bash "$SKILL_DIR/scripts/fetch-docs.sh" [OPTIONS] [QUERY]
 ```
 
 **Options:**
@@ -84,25 +126,25 @@ bash scripts/fetch-docs.sh [OPTIONS] [QUERY]
 ### Basic Agent Creation
 
 ```bash
-bash scripts/fetch-docs.sh --topic agents --verbose
+bash "$SKILL_DIR/scripts/fetch-docs.sh" --topic agents --verbose
 ```
 
 ### Multi-Agent Handoffs
 
 ```bash
-bash scripts/fetch-docs.sh --topic handoffs
+bash "$SKILL_DIR/scripts/fetch-docs.sh" --topic handoffs
 ```
 
 ### Custom Query
 
 ```bash
-bash scripts/fetch-docs.sh "How to create a triage agent that routes to specialists"
+bash "$SKILL_DIR/scripts/fetch-docs.sh" "How to create a triage agent that routes to specialists"
 ```
 
 ### Conceptual Overview
 
 ```bash
-bash scripts/fetch-docs.sh --topic lifecycle --mode info
+bash "$SKILL_DIR/scripts/fetch-docs.sh" --topic lifecycle --mode info
 ```
 
 ## How It Works
@@ -120,8 +162,6 @@ The script achieves ~50-77% token savings by:
 2. Filtering with awk/grep/sed (0 LLM tokens used for filtering!)
 3. Returning only code examples + API signatures + key notes
 
-**Do NOT use MCP tools directly** - always use the script for optimal token usage.
-
 ## Scripts Reference
 
 | Script | Purpose |
@@ -131,3 +171,21 @@ The script achieves ~50-77% token savings by:
 | `extract-code-blocks.sh` | Code example filter |
 | `extract-python-signatures.sh` | Python API signature filter |
 | `extract-notes.sh` | Important notes filter |
+
+## Why This Skill Over MCP Tools
+
+| Approach | Token Cost | Steps |
+|----------|------------|-------|
+| MCP tools directly | ~4000 tokens | 2 (resolve + query) |
+| This skill | ~1000 tokens | 1 (script handles all) |
+
+**This skill uses Context7 MCP internally via `mcp-client.py`, but filters the output before returning it to the LLM.**
+
+The script:
+1. Spawns Context7 MCP server (`npx -y @upstash/context7-mcp`)
+2. Sends JSON-RPC query with pre-configured library ID
+3. Filters response with shell pipelines (awk/grep/sed)
+4. Returns only relevant content (code blocks, signatures, notes)
+5. Stops the MCP server
+
+All filtering happens in the shell subprocess = **0 LLM tokens for filtering**.
