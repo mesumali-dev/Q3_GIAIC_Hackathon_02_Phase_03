@@ -66,28 +66,77 @@ def extract_tool_calls(result: RunResult[UserContext]) -> list[ToolCall]:
     output_map: dict[str, ToolCallOutputItem] = {}
     for item in result.new_items:
         if isinstance(item, ToolCallOutputItem):
-            output_map[item.raw_item.call_id] = item
+            # Handle both object and dictionary formats for raw_item
+            if hasattr(item.raw_item, 'call_id'):
+                call_id = item.raw_item.call_id
+            elif isinstance(item.raw_item, dict) and 'call_id' in item.raw_item:
+                call_id = item.raw_item['call_id']
+            elif isinstance(item.raw_item, dict) and 'id' in item.raw_item:
+                # Some versions use 'id' instead of 'call_id'
+                call_id = item.raw_item['id']
+            else:
+                continue  # Skip if no call_id found
+            output_map[call_id] = item
+
+    # Import json at the beginning to avoid scoping issues
+    import json
 
     # Extract tool calls
     for item in result.new_items:
         if isinstance(item, ToolCallItem):
             raw = item.raw_item
-            call_id = getattr(raw, "call_id", None)
+
+            # Handle both object and dictionary formats for raw_item
+            if hasattr(raw, 'id'):  # Most ToolCallItems use 'id' instead of 'call_id'
+                call_id = raw.id
+            elif hasattr(raw, 'call_id'):
+                call_id = raw.call_id
+            elif isinstance(raw, dict) and 'id' in raw:
+                call_id = raw['id']
+            elif isinstance(raw, dict) and 'call_id' in raw:
+                call_id = raw['call_id']
+            else:
+                call_id = None
 
             # Extract function name and arguments
             tool_name = ""
             parameters: dict[str, Any] = {}
 
-            if hasattr(raw, "function"):
-                tool_name = raw.function.name or ""
+            # Handle function information extraction differently based on raw type
+            if isinstance(raw, dict):
+                # Dictionary format
+                func_info = raw.get('function') or raw
+                tool_name = func_info.get('name', '')
+
                 # Parse arguments from JSON string
-                import json
+                args_str = func_info.get('arguments', '{}') or "{}"
 
                 try:
-                    args_str = raw.function.arguments or "{}"
                     parameters = json.loads(args_str)
                 except (json.JSONDecodeError, AttributeError):
                     parameters = {}
+            else:
+                # Object format
+                if hasattr(raw, 'function'):
+                    func = raw.function
+                    tool_name = getattr(func, 'name', '')
+
+                    # Parse arguments from JSON string
+                    args_str = getattr(func, 'arguments', '{}') or "{}"
+
+                    try:
+                        parameters = json.loads(args_str)
+                    except (json.JSONDecodeError, AttributeError):
+                        parameters = {}
+                else:
+                    # If no function attribute, try direct attributes
+                    tool_name = getattr(raw, 'name', '')
+                    # For parameters, if there's an arguments attribute
+                    args_str = getattr(raw, 'arguments', '{}') or "{}"
+                    try:
+                        parameters = json.loads(args_str)
+                    except (json.JSONDecodeError, AttributeError):
+                        parameters = {}
 
             # Match with output if available
             output = output_map.get(call_id) if call_id else None
