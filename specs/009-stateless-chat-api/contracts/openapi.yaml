@@ -1,0 +1,256 @@
+openapi: 3.1.0
+info:
+  title: Stateless Chat API
+  description: |
+    Chat API endpoint for conversational AI interactions.
+    Connects frontend clients to AI agents while persisting all conversation state in the database.
+  version: 1.0.0
+  contact:
+    name: Engineering Team
+
+servers:
+  - url: http://localhost:8000
+    description: Development server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/{user_id}/chat:
+    post:
+      operationId: sendChatMessage
+      summary: Send a message to the AI assistant
+      description: |
+        Send a user message and receive an AI response.
+
+        If `conversation_id` is not provided, a new conversation is created.
+        If `conversation_id` is provided, the message is added to the existing conversation.
+
+        The system reconstructs conversation context from the database on every request,
+        ensuring stateless operation and conversation persistence across server restarts.
+      tags:
+        - Chat
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: User ID (must match authenticated JWT user_id)
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+            examples:
+              newConversation:
+                summary: Start new conversation
+                value:
+                  message: "Add a task to buy groceries"
+              continueConversation:
+                summary: Continue existing conversation
+                value:
+                  message: "Mark it as complete"
+                  conversation_id: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Successful response with AI assistant message
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+              examples:
+                withToolCalls:
+                  summary: Response with tool calls
+                  value:
+                    conversation_id: "550e8400-e29b-41d4-a716-446655440000"
+                    assistant_message: "Created task 'buy groceries' (ID: abc123)"
+                    tool_calls:
+                      - tool_name: "add_task"
+                        parameters:
+                          title: "buy groceries"
+                        result:
+                          success: true
+                          task_id: "abc123"
+                        success: true
+                    created_at: "2026-01-08T12:00:00Z"
+                withoutToolCalls:
+                  summary: Response without tool calls
+                  value:
+                    conversation_id: "550e8400-e29b-41d4-a716-446655440000"
+                    assistant_message: "Hello! I can help you manage your tasks. What would you like to do?"
+                    tool_calls: []
+                    created_at: "2026-01-08T12:00:00Z"
+        '401':
+          description: Missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Not authenticated"
+        '403':
+          description: User ID mismatch or conversation belongs to another user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Access denied"
+        '404':
+          description: Conversation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Conversation not found"
+        '422':
+          description: Validation error (empty message, invalid format)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+              example:
+                detail:
+                  - loc: ["body", "message"]
+                    msg: "String should have at least 1 character"
+                    type: "string_too_short"
+        '502':
+          description: AI service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "AI service temporarily unavailable"
+        '504':
+          description: Agent execution timeout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "The assistant took too long to respond"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from Better Auth
+
+  schemas:
+    ChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 50000
+          description: User message content
+          example: "Add a task to buy groceries"
+        conversation_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Existing conversation ID to continue (omit for new conversation)
+          example: "550e8400-e29b-41d4-a716-446655440000"
+
+    ChatResponse:
+      type: object
+      required:
+        - conversation_id
+        - assistant_message
+        - tool_calls
+        - created_at
+      properties:
+        conversation_id:
+          type: string
+          format: uuid
+          description: Conversation ID (new or existing)
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        assistant_message:
+          type: string
+          description: AI agent's response text
+          example: "Created task 'buy groceries' (ID: abc123)"
+        tool_calls:
+          type: array
+          items:
+            $ref: '#/components/schemas/ToolCall'
+          description: Array of MCP tool invocations (can be empty)
+        created_at:
+          type: string
+          format: date-time
+          description: Response timestamp
+          example: "2026-01-08T12:00:00Z"
+
+    ToolCall:
+      type: object
+      required:
+        - tool_name
+        - parameters
+        - success
+      properties:
+        tool_name:
+          type: string
+          description: Name of the invoked MCP tool
+          example: "add_task"
+        parameters:
+          type: object
+          additionalProperties: true
+          description: Parameters passed to the tool
+          example:
+            title: "buy groceries"
+        result:
+          type: object
+          additionalProperties: true
+          nullable: true
+          description: Tool result (null if failed)
+          example:
+            success: true
+            task_id: "abc123"
+        success:
+          type: boolean
+          description: Whether the tool call succeeded
+          example: true
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Error message
+          example: "Not authenticated"
+
+    ValidationErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: array
+          items:
+            type: object
+            properties:
+              loc:
+                type: array
+                items:
+                  oneOf:
+                    - type: string
+                    - type: integer
+              msg:
+                type: string
+              type:
+                type: string
+
+tags:
+  - name: Chat
+    description: Conversational AI chat operations
